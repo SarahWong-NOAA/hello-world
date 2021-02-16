@@ -1,4 +1,12 @@
 # hello-world
-test project number 2
-I am editing this script so I can learn how to use github. 
-editing again because the commit message didnt upload
+
+#NOAA R cheat sheet 
+  - Documents frequently used R functions 
+  - Topics included in this markdown are 
+    - Spatial analysis 
+    - Data manimpulation
+    - Regressions 
+    - Editing ggplots 
+    - Spatial analysis 
+    - Data scraping 
+    - Handling date objects in R 
