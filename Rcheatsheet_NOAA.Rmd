@@ -1,0 +1,507 @@
+---
+title: "R Cheat Sheet_NOAA"
+output: html_document
+---
+
+#This script covers the following topics... 
+
+# Template and managing R environment
+  - #Removing everything in the environment
+  - #Saving an R object
+  - #Create working directory
+  
+# Querying through Oracle 
+  - #Opening up Oracle connection
+  - #Downloading Oracle Data using the SQL way
+
+# Data Manipulation
+  - #Removing duplicate Rows
+  - #Reshapping a data.frame (switching between long and wide)
+  - #Dummy variables
+  - #Creating a data.frame with columns of lagged values between 2 data sets
+  - #Convert a list with same col names into a data frame 
+  - #Count number of NAs in each column of a data frame
+  - #Rename columns with paste0
+  - #Get rid of duplicate column names 
+  - #evaluating expressions in mutate 
+  
+# Regressions
+  - #Pass a formula expression using dplyr::mutate 
+  
+# Plots
+  - #Saving a ggplot
+  - #Plotting multiple lines with geom_line
+  - #Avoid overlapping ggplot x axis 
+  - #plm package for fixed effect models 
+    - #Declarining a data set as a panel 
+    - #Run fixed effect regressions
+    
+  
+  
+# Spatial analysis
+  - #Getting a map from Google Maps using API key
+
+# Data scraping 
+  - #If the url has a .csv extension
+  - #If the url has a .xlsx or .xls extension 
+  - #If there is not a 'download' data button (rvest)
+  
+# Date objects 
+  - #converting excel 5 digit dates to date object
+  
+  
+  
+  
+  
+  
+  
+  
+#Useful resources
+  -library(jtools)
+  - regressions in R
+    - robust standard erros, visualization, and table output 
+      https://cran.r-project.org/web/packages/jtools/vignettes/summ.html 
+      
+  -library(dotwhisker)
+    - plotting regression results 
+    - https://cran.r-project.org/web/packages/dotwhisker/vignettes/dotwhisker-vignette.html 
+
+#Common working directories
+- C:/Users/Sarah.Wong/Documents/Projects/Ongoing/Tuna fleet dynamics/background
+- H:/Projects/Ongoing/Tuna fleet dynamics/programs
+
+
+#Removing everything in the environment
+```{r}
+
+rm(list=ls())
+
+rm(list=setdiff(ls(), c("donut_width_miles_specification", "mpa_folders",
+                        "donut_width_miles", "mpa_folder", "file_title", "path", 
+                        "path_results", "path_data", "path_all_results", 
+                        "established_date", "expansion_date")))
+
+```
+
+#Removing everything but objects in "" 
+```{r}
+
+rm(list=setdiff(ls(), c("donut_width_miles_specification", "mpa_folders",
+                        "donut_width_miles", "mpa_folder", "file_title", "path", 
+                        "path_results", "path_data", "path_all_results", 
+                        "established_date", "expansion_date")))
+
+```
+
+#Don't include warnings, code  in knit output 
+---
+title: "comparing closure months with standardized plots"
+output:
+  html_document:
+    toc: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+    code_folding: hide
+---
+```{r global-options, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/',
+                      echo=FALSE, warning=FALSE, message=FALSE)
+```
+
+  
+
+#Opening up Oracle connection
+- file:///G:/Oracle/Oracle_tutorial.nb.html
+```{r}
+rm(list=ls(all=TRUE))
+
+library(RODBC) # for connecting to Oracle the SQL way
+library(devtools) # we want the development version of DBI for a few functions
+devtools::install_github("rstats-db/DBI")
+library(tidyverse) # for data manipulations
+library(Lahman) # for reproducible and non-confidential datasets
+
+ch <- odbcConnect(dsn="PIC",
+                  uid=rstudioapi::askForPassword("Oracle user name"),
+                  pwd=rstudioapi::askForPassword("Oracle password"),
+                  believeNRows=FALSE)
+```
+
+#Downloading Oracle Data using the SQL way
+```{r}
+#To select certain columns
+df <- sqlQuery(ch, paste("SELECT
+                              RETURN_YR, RETURN_MON, RETURN_DAY,
+                              DEPART_YR, DEPART_MON, DEPART_DAY,
+                              BSLATDEG, BSLATMIN, BSLATDIR,
+                              BSLONGDEG, BSLONGMIN, BSLONGDIR,
+                              FLEET, LANDYR, TRIPNUM, SERIALNUM, HOOKSSET,
+                              SET_TYPE",
+                                                     "FROM LLDS.LLDS_HDR_20180315HAC",
+                                                     "WHERE DEPART_YR >= 2004"))
+
+#Selecting all columns 
+df <- sqlQuery(ch, paste("SELECT *",
+                         "FROM LLDS.LLDS_HDR_20180315HAC",
+                         "WHERE DEPART_YR >= 2004"))
+```
+
+
+
+#Saving an R object
+Tags: rds, RData
+```{r}
+df1 <- data.frame(
+  col1 = rep(1, 10, replace = TRUE),
+  col2 = sample(rnorm(1,5), 10, replace = TRUE)
+)
+df2 <- data.frame(x = 1:10, y = 1:10)
+df3 <- data.frame(x = 1:10, y = 1:10)
+
+#Saving 1 R object
+saveRDS(df1, file ="file_name.rds")
+var_name <- readRDS(file ="file_name.rds")
+
+#Saving multiple R objects
+save(df1, df2, df3, file = "files_name.RData")
+load(file = "files_name.RData") 
+```
+
+
+#Removing duplicate Rows
+TAGS: data manipulation, dplyr
+```{r}
+df <- data.frame(
+  year = c(rep(2002, 4), rep(2003, 4)),
+  population = c(rep(5.5, 4), rep(7.8, 4))
+)
+
+distinct(df)
+
+#=====================================================================
+
+df <- data.frame(
+  year = c(rep(2002, 4), rep(2003, 4)),
+  population = c(rep(5.5, 4), rep(7.8, 4)), 
+  country = rep(c("china", "india"), 8)
+)
+
+df %>%
+  group_by(country) %>%
+  distinct()
+```
+
+
+
+#Getting a map from Google Maps using API key
+- request an API key for you project (use personal email because NOAA and school email need request from admin)
+```{r}
+library(ggplot2)
+
+boundary <- get_googlemap(center = c(lon = -157.529579, lat = 21.097687), 
+                          key = "AIzaSyCAITiU3KXwk9L1GCGyUvD7iQKKXNJk0Hc", 
+                          maptype = "terrain", 
+                          zoom = 5)
+
+ggmap(boundary) + 
+  geom_point(data, aes(x = long, y = lat))
+```
+
+
+
+
+
+#Reshapping a data.frame
+```{r}
+library(tidyr)
+
+df_wide <- data.frame(
+  sex = c("M", "M", "F", "M"),
+  treatment1 = c(.5, .9, 1, .6),
+  treatment2 = c(100, 50, 11, 10)
+)
+
+#Wide to Long-------------------------------------------------------------------------
+df_long <- gather(df_wide, 
+                  treatment, #column name summarizing old column name (key column)
+                  treatment_measure, #column name summarizing measures (value column)
+                  treatment1, treatment2) #Wide to long columns in wide df
+
+
+#Long to wide-------------------------------------------------------------------------
+
+df_long$ID <- c(1,2,3,4) #To go from long to wide, each row has to have a unique idenifier.  
+
+df_wide2 <- spread(df_long, treatment, treatment_measure)
+```
+
+#Dummy variables
+```{r}
+#Creating dummy variables
+df <- data.frame(
+  period = c(1,1,2,1,2),
+  id = c(100, 100, 100, 200, 200), 
+  ph = c("MA", "SV", "TH", "TH", "SV")
+)
+
+#==================================================================================
+
+#Method 1
+  df$dummy <- rep(1, length(df$period))
+
+  dummy_df <- tidyr::spread(df, 
+                            key = ph, #categories in which to make dummy variables
+                           value = dummy, #value of dummy variable
+                            fill = 0 #fill in NAs with zero
+                           )
+
+#Method 2 
+  df2 <- fastDummies::dummy_cols(df, select_columns = "ph")
+```
+
+
+#Creating a data.frame with columns of lagged values between 2 data sets
+https://stackoverflow.com/questions/54355615/adding-a-column-of-lag-variables-between-2-data-frames-in-r/54356315#54356315 
+```{r}
+Date <-  seq.Date(as.Date("2004-01-01"), as.Date("2004-01-06"), by = "day")
+df1 <- data.frame(
+  Date,
+  Price = sample(c(1:9), length(Date), replace = TRUE)
+)
+
+df2 <- data.frame(
+  Date,
+  Catch = c(sample(c(1:100), 2, replace = TRUE), NA, 
+            sample(c(1:100), 2, replace = TRUE), NA)
+)
+
+#What i want to create==============================================================================================
+final <- data.frame(
+  df1,
+  catch_01_day_before_market = c(NA, 44, 45, NA, 4, 77),
+  catch_02_day_before_market = c(NA, NA, 44, 45, NA, 4)
+)
+
+#How I will create it ==============================================================================================
+library(plyr)
+library(dplyr)
+
+df1 %>% bind_cols(data.frame(t(ldply(1:4, lag, x= (df2$Catch)))))
+
+```
+
+
+
+#Convert a list with same col names into a data frame
+https://stackoverflow.com/questions/4227223/r-list-to-data-frame 
+```{r}
+df1 <- data.frame(letter = sample(c("a", "b", "c"), 5, replace = TRUE),
+                  number = sample(1:5, 5, replace = TRUE))
+
+df2 <- data.frame(letter = sample(c("a", "b", "c"), 5, replace = TRUE),
+                  number = sample(1:5, 5, replace = TRUE))
+
+df_list <- list(df1, df2)
+
+test <- do.call(rbind.data.frame, df_list)
+
+#------------------
+# dplyr way 
+
+test <- purrr::reduce(df_list, left_join)
+```
+
+
+
+#Count number of NAs in each column of a data frame
+- https://stackoverflow.com/questions/26273663/r-how-to-total-the-number-of-na-in-each-col-of-data-frame
+```{r}
+df <- as.data.frame(matrix(sample(c(NA,0:4), 5*20,replace=TRUE), ncol=5))
+
+colSums(is.na(df))
+```
+
+
+#Rename columns with paste0
+ - https://stackoverflow.com/questions/49650394/how-to-rename-a-variable-using-a-dynamic-name-and-dplyr
+```{r}
+library(doBy)
+
+names(iris)
+
+new_var_lab <- "New"
+
+iris %>% 
+  doBy::renameCol("Sepal.Length", paste0(new_var_lab, "_Sepal.Length"))
+
+names(iris)
+```
+
+#Saving a ggplot
+```{r}
+  ggplot(DUAL_PERMIT, aes(LANDYR, n_VESSELS)) +
+    geom_point() + 
+    labs(title = "Number of Dual Permit Vessels Per Year")
+  ggsave(file.path(".", 
+                   "figures", 
+                   folder,
+                   paste0(folder, "_", file.name, "_marketcond.png")), 
+         device = "png")
+  
+  
+# OR 
+  png(file.path("..",
+                 "figures",
+                 "fig.png"), 
+        width = 600, height = 600)
+  ggplot(df, aes(x, y)) + 
+    geom_line()
+  dev.off()
+```
+
+#Get rid of duplicate column names 
+```{r}
+
+df <- data.frame(PERIOD = 1:10,
+                 CATCH = sample(1:100, 10, replace = FALSE),
+                 PERIOD = 1:10,
+                 LANDINGS  = sample(1:100, 10, replace = FALSE))
+
+
+# Only keep unique columns
+  df <- df[, !duplicated(colnames(df))] 
+```
+
+#Create working directory
+```{r}
+# create project folder (if it doesn't exist)
+path <- (paste0(getwd(), "/logbook/"))
+
+if(!dir.exists(path)) {
+  
+  # project folder
+  dir.create(path)
+  # The Raw Data folder contains the original files
+  dir.create(paste0(path, "Raw_Data"))
+  
+} 
+
+```
+
+#Plotting multiple lines with geom_line
+```{r}
+graph.df <- data.frame(year = rep(2005:2006, 100), 
+                        group_type = rep(c("a", "b"), 100),
+                        value = sample(1:500, 100, replace = TRUE)) %>% 
+  group_by(year, group_type) %>%
+  summarize(value = mean(value, na.rm = TRUE))
+
+ggplot(graph.df, aes(year, value)) +
+  geom_line(aes(group = group_type, color = group_type))
+```
+
+#Pass a formula expression using dplyr::mutate 
+https://stackoverflow.com/questions/64216729/pass-formula-expressions-in-dplyrmutate/64216751#64216751
+```{r}
+expression1 <- formula(ifelse(Var1 == 9, 0, Var1))
+
+df <- data.frame(Var1 = sample(1:10, 10, replace = TRUE),
+                 Var2 = sample(1:10, 10, replace = TRUE)) %>% 
+   mutate(new_var = eval(rlang::parse_expr(expression1)))
+```
+
+#Avoid overlapping ggplot x axis 
+```{r}
+ggplot(onevar_long, aes(SEASON, value, color = data_set)) +
+    geom_point() + 
+    labs(title = paste0("Comparing ", variable, " Values Between Data Sets")) +
+    scale_x_discrete(guide = guide_axis(check.overlap = TRUE))
+```
+
+#plm package for fixed effect models 
+```{r}
+library(plm)
+
+df <- data.frame(
+  CATCH = sample(1:10, 20, replace = TRUE),
+  DIST = sample(50:1000, 20, replace = TRUE),
+  FISHERMAN = sample(c("A", "B", "C", "D"), 20, replace = TRUE)
+)
+
+#Declarining a data set as a panel 
+  # - pdata.frame vs. plm.data automatically gives it a 'time' variable if one is not arleady defined in the data set 
+  df.plm <- pdata.frame(df, index = "FISHERMAN")
+  
+#Run fixed effect regressions
+  reg <- plm(CATCH ~ DIST, index = "FISHERMAN", data = df)
+  
+  summary(reg)
+```
+
+#evaluating expressions in mutate 
+```{r} 
+df <- data.frame(a = 1:10,
+                 b = 11:20)
+# Create expressions for mutate variables (line 18, 30 -34)
+  expression1 <- "ifelse(a == 0, NA, a)"
+  expression2 <- "round(b/a, 2)"
+  
+  # Joining tables (line 63 - 64)
+  df <- df %>%
+    mutate(exp1 = eval(rlang::parse_expr(expression1)),
+           exp2 = eval(rlang::parse_expr(expression2))) 
+```
+
+#If the url has a .csv extension
+ - example downloading SST from ERRDAP 
+```{r}
+url.csv <- 'http://apdrc.soest.hawaii.edu/erddap/griddap/hawaii_soest_d346_28ac_fccf.csv?potdsl[(2020-12-01T00:00:00Z):1:(2020-12-01T00:00:00Z)][(5.0):1:(4478.0)][(-74.5):1:(64.36099999999999)][(0.5):1:(359.5)]'
+
+sst.df <- read_csv(url.csv)
+```
+
+#If the url has a .xlsx or .xls extension 
+  - xlsx and xls do not import using the readxl functions
+  - Instead use the rio package 
+  - (See #converting excel 5 digit dates to date object)
+```{r}
+library(rio)
+
+  url <- "https://www.eia.gov/dnav/pet/hist_xls/EMD_EPD2D_PTE_NUS_DPGm.xls"
+  
+  no2_diesel.df <- rio::import(file = url,which = 2) 
+  
+```
+
+#converting excel 5 digit dates to date object
+```{r}
+library(janitor)
+
+five_dig_excel_dates.v <- c(8839, 8870, 8900, 8931, 8961, 8992, 9023)
+
+date_object.v <- janitor::excel_numeric_to_date(as.numeric(five_dig_excel_dates.v))
+```
+
+#If there is not a 'download' data button (rvest)
+  - Tutorial: https://www.dataquest.io/blog/web-scraping-in-r-rvest/  
+  - Use inspector gadget chrome extension 
+  - click on the table you want to scrape and get xpath
+```{r}
+library(rvest)
+
+  
+url <- read_html("https://www.eia.gov/dnav/pet/hist/LeafHandler.ashx?n=pet&s=emd_epd2d_pte_nus_dpg&f=m")
+
+xpath_node <- '//*[contains(concat( " ", @class, " " ), concat( " ", "B3", " " ))] | //*[contains(concat( " ", @class, " " ), concat( " ", "B4", " " ))] | //*[contains(concat( " ", @class, " " ), concat( " ", "G", " " ))] | //*[contains(concat( " ", @class, " " ), concat( " ", "G2", " " ))]'
+  
+test <- url %>%
+  html_nodes(xpath = xpath_node) %>%
+  html_text()
+```
+
+
+
+
+
+
