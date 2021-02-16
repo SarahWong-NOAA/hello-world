@@ -40,6 +40,9 @@ output: html_document
   
 # Spatial analysis
   - #Getting a map from Google Maps using API key
+  - Convert spatial objects to an sf objects when applicable.  sf objects work 
+    like data frames in dplyr.  you can apply dplyr functions like filter 
+    select, etc. 
 
 # Data scraping 
   - #If the url has a .csv extension
