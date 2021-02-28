@@ -27,30 +27,24 @@ output: html_document
   
 # Regressions
   - #Pass a formula expression using dplyr::mutate 
+  - #plm package for fixed effect models 
+    - #Declarining a data set as a panel 
+    - #Run fixed effect regressions
   
 # Plots
   - #Saving a ggplot
   - #Plotting multiple lines with geom_line
-  - #Avoid overlapping ggplot x axis 
-  - #plm package for fixed effect models 
-    - #Declarining a data set as a panel 
-    - #Run fixed effect regressions
+  - #Avoid overlapping ggplot x axis
+  - #Flush captions to the left
+  - #Plot mult graphs on one panel
     
   
   
 # Spatial analysis
   - #Getting a map from Google Maps using API key
-  - Convert spatial objects to an sf objects when applicable.  sf objects work 
-    like data frames in dplyr.  you can apply dplyr functions like filter 
-    select, etc. 
 
-# Data scraping 
-  - #If the url has a .csv extension
-  - #If the url has a .xlsx or .xls extension 
-  - #If there is not a 'download' data button (rvest)
   
-# Date objects 
-  - #converting excel 5 digit dates to date object
+  
   
   
   
@@ -456,55 +450,57 @@ df <- data.frame(a = 1:10,
            exp2 = eval(rlang::parse_expr(expression2))) 
 ```
 
-#If the url has a .csv extension
- - example downloading SST from ERRDAP 
+#Flush captions to the left
 ```{r}
-url.csv <- 'http://apdrc.soest.hawaii.edu/erddap/griddap/hawaii_soest_d346_28ac_fccf.csv?potdsl[(2020-12-01T00:00:00Z):1:(2020-12-01T00:00:00Z)][(5.0):1:(4478.0)][(-74.5):1:(64.36099999999999)][(0.5):1:(359.5)]'
+graph.df <- data.frame(x = sample(1:10, 10, replace = TRUE),
+                       y = sample(1:10, 10, replace = TRUE))
 
-sst.df <- read_csv(url.csv)
+ggplot(graph.df, aes(x, y)) + 
+  geom_line() +
+  labs(title = "Some Title",
+       subtitle = "Some subtitle",
+       caption = "Some caption flushed to the left") + 
+  theme(plot.caption = element_text(hjust = 0, face= "italic"))
 ```
 
-#If the url has a .xlsx or .xls extension 
-  - xlsx and xls do not import using the readxl functions
-  - Instead use the rio package 
-  - (See #converting excel 5 digit dates to date object)
+#Plot mult graphs on one panel
 ```{r}
-library(rio)
 
-  url <- "https://www.eia.gov/dnav/pet/hist_xls/EMD_EPD2D_PTE_NUS_DPGm.xls"
+# ggplot2::facet_grid
+
+# Ideally you want to use facet_grid.  ggplot2::facet_grid requires the data set to be in a long format (so "Reshaping a data frame")
+
+# Reshape the data from wide to long
+df_wide <- data.frame(
+  day = 1:2,
+  Males = c(.5, .9),
+  Females = c(1, .6)
+  )
+
+df_long <- gather(df_wide, 
+                  sex_of_patient, #column name summarizing old column name (key column)
+                  treatment_efficacy, #column name summarizing measures (value column)
+                  Males, Females) #Wide to long columns in wide df
+
+ggplot(df_long, aes(day, treatment_efficacy)) + 
+  geom_line() + 
+  facet_grid(rows = vars(sex_of_patient))
+
+#--------------
+# faceet_grid requires that all graph panels be taken at the same level (in the example above "days" is the level).  This is because ggplot tries to mitigate false presentation.  If two graphs are plotted on top of each other it might look like one variable is preforming better than the other but really its just because one is taken daily and the other averaged across years.  
+# if you really want to plot two graphs from 2 different data sets side by side use gridExtra::arrangeGrob
+
+plot1 <- data.frame(x = sample(1:10, 10),
+                    y = sample(1:10, 10))
+
+plot2 <- data.frame(x = sample(1:10, 10),
+                    y = sample(100:200, 10))
+
+g <- gridExtra::arrangeGrob(plot1, plot2)
   
-  no2_diesel.df <- rio::import(file = url,which = 2) 
+  ggsave(file = paste0(getwd(), "Sample_grob_plot.png"), g, 
+         device = "png", width = 900/72, height = 550/72, dpi = 72)
   
+  #the only thign is that you need to save the plot object in order to view it 
 ```
-
-#converting excel 5 digit dates to date object
-```{r}
-library(janitor)
-
-five_dig_excel_dates.v <- c(8839, 8870, 8900, 8931, 8961, 8992, 9023)
-
-date_object.v <- janitor::excel_numeric_to_date(as.numeric(five_dig_excel_dates.v))
-```
-
-#If there is not a 'download' data button (rvest)
-  - Tutorial: https://www.dataquest.io/blog/web-scraping-in-r-rvest/  
-  - Use inspector gadget chrome extension 
-  - click on the table you want to scrape and get xpath
-```{r}
-library(rvest)
-
-  
-url <- read_html("https://www.eia.gov/dnav/pet/hist/LeafHandler.ashx?n=pet&s=emd_epd2d_pte_nus_dpg&f=m")
-
-xpath_node <- '//*[contains(concat( " ", @class, " " ), concat( " ", "B3", " " ))] | //*[contains(concat( " ", @class, " " ), concat( " ", "B4", " " ))] | //*[contains(concat( " ", @class, " " ), concat( " ", "G", " " ))] | //*[contains(concat( " ", @class, " " ), concat( " ", "G2", " " ))]'
-  
-test <- url %>%
-  html_nodes(xpath = xpath_node) %>%
-  html_text()
-```
-
-
-
-
-
 
